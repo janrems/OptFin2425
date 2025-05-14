@@ -378,3 +378,69 @@ plt.plot(errors["dt"],errors["str1"],'g')
 plt.plot(errors["dt"],errors["str2"],'b')
 plt.show()
 
+
+#####################################################
+#Black-Scholes
+#4.1
+
+n_samples = 10000
+T=1.0
+N = 500
+dt = T/N
+
+
+r = 0.1
+mu=0.1
+sigma=0.2
+s0=100
+K=105
+
+
+
+
+def gen_gbm(n_s,T,N,W):
+    dt = T/N
+    x = torch.ones(n_s, N)*s0
+    for i in range(N-1):
+        dx = x[:,i]*((mu)*dt + sigma*(W[:,i+1]-W[:,i]))
+        x[:,i+1] = x[:,i] + dx
+    return x
+
+
+def gen_z(n_s,T,N,W):
+    dt = T/N
+    x = torch.ones(n_s, N)*1.0
+    for i in range(N-1):
+        dx = x[:,i]*(-(mu-r)/sigma*(W[:,i+1]-W[:,i]))
+        x[:,i+1] = x[:,i] + dx
+    return x
+
+W = gen_bm(n_samples,N,T)
+s = gen_gbm(n_samples,T,N,W)
+z = gen_z(n_samples,T,N,W)
+
+claim = torch.maximum(s[:,-1]-K,torch.zeros(n_samples))
+
+v0 = torch.mean(claim*z[:,-1],dim=0)*np.exp(-r*T)
+print(v0)
+
+
+d1 = (np.log(s0/K) + (r+0.5*sigma**2)*T)/(sigma*np.sqrt(T))
+d2 = d1 - sigma*np.sqrt(T)
+
+from scipy.stats import norm
+
+call = norm.cdf(d1)*s0 - norm.cdf(d2)*K*np.exp(-r*T)
+print(call)
+
+
+
+
+
+
+
+
+
+
+
+
