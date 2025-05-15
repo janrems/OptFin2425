@@ -55,11 +55,11 @@ class log_utility(nn.Module):
 
         for i in range(N):
             input_seq[:,i,:] = x
-            u = torch.cat((x, torch.ones_like(x) * dt * i), dim=-1)
-            out = phi(u)
-            output_seq[:, i,:] = out
+            inpt = torch.cat((x, torch.ones_like(x) * dt * i), dim=-1)
+            u = phi(inpt)
+            output_seq[:, i,:] = u
             if i < N-1:
-                x = x + b(x,i*dt,out) * dt + sigma(x,i*dt,out)*dW[:,i+1,:]
+                x = x + b(x,i*dt,u) * dt + sigma(x,i*dt,u)*dW[:,i+1,:]
 
 
         return x, input_seq, output_seq
@@ -78,7 +78,7 @@ def train(itr, model):
 
     for n in range(itr):
         dW = torch.randn((model.batch_size,model.N,1))*np.sqrt(dt)
-        xT, state_seq, control = model(dW)
+        xT, state_seq, control_seq = model(dW)
 
         loss = loss_ln(xT)
         losses.append(float(loss))
@@ -90,27 +90,5 @@ def train(itr, model):
         if n%100 == 0:
             print(n)
 
-    return losses, control, state_seq
+    return losses, control_seq, state_seq
 
-
-itr = 1000
-batch_size = 3000
-dim_h=32
-#itr = 2000
-#batch_size = 5000
-#dim_h = 32
-model = log_utility(dim_h, batch_size, N)
-losses, control_p, state_seq_p = train(itr,model)
-
-
-opt = drift/volatility**2 *np.ones(N)
-
-i = np.random.randint(1000)
-plt.plot(t,control_p[i,:,0].detach().numpy(), label="Predicted control")
-plt.plot(t,opt, label="True control")
-plt.plot(t,state_seq_p[i,:,0].detach().numpy(), label="State")
-plt.legend()
-plt.show()
-
-plt.plot(losses)
-plt.show()
