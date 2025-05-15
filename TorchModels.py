@@ -127,3 +127,63 @@ losses = train(model,epochs=1000)
 plot_losses(losses)
 
 
+
+######################################################
+#Optimisation
+
+def objective(x, y):
+    return (x - torch.sin(y))**2
+
+# Neural network u(y) ≈ optimal x
+class PolicyNet(nn.Module):
+    def __init__(self):
+        super(PolicyNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(1, 32),
+            nn.Tanh(),
+            nn.Linear(32, 32),
+            nn.Tanh(),
+            nn.Linear(32, 1)
+        )
+
+    def forward(self, y ):
+        return self.net(y)
+
+
+def sample_y(n=1000):
+    return (2 * torch.pi * torch.rand(n, 1)) - torch.pi
+
+def train(model):
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    losses = []
+
+    for epoch in range(1000):
+        y = sample_y(512)  # resample each step
+        x = model(y)
+        loss = objective(x, y).mean()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(float(loss))
+
+        if epoch % 100 == 0:
+            print(f"Epoch {epoch}, Loss = {loss.item():.4f}")
+
+    return losses
+
+model = PolicyNet()
+losses = train(model)
+
+plot_losses(losses)
+
+# Evaluate learned policy
+y_test = torch.linspace(-torch.pi, torch.pi, 200).unsqueeze(1)
+x_pred = model(y_test).detach()
+x_true = torch.sin(y_test)
+
+plt.plot(y_test.numpy(), x_true.numpy(), label="Target: sin(y)")
+plt.plot(y_test.numpy(), x_pred.numpy(), label="NN output", linestyle="--")
+plt.legend()
+plt.grid(True)
+plt.show()
+
