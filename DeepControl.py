@@ -92,3 +92,27 @@ def train(itr, model):
 
     return losses, control_seq, state_seq
 
+
+itr = 1000
+batch_size = 5000
+dim_h=32
+#itr = 2000
+#batch_size = 5000
+#dim_h = 32
+model = log_utility(dim_h, batch_size, N)
+losses, control_p, state_seq_p = train(itr,model)
+
+
+opt = drift/volatility**2 *np.ones(N)
+
+i = np.random.randint(1000)
+plt.plot(t,control_p[i,:,0].detach().numpy(), label="Predicted control")
+plt.plot(t,opt, label="True control")
+plt.plot(t,state_seq_p[i,:,0].detach().numpy(), label="State")
+plt.legend()
+plt.show()
+
+plt.plot(losses)
+plt.show()
+
+
