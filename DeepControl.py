@@ -116,3 +116,119 @@ plt.plot(losses)
 plt.show()
 
 
+
+#################################
+#consumption
+T = 1
+N = 50
+dt = T/N
+t=torch.linspace(0,T,N)
+x_0 = 1
+K = 1
+
+
+
+def b(x,t,u):
+    return (0.05-u)*x
+
+def sigma(x,t,u):
+    return 0.2*x
+
+class consumption(nn.Module):
+    def __init__(self, dim_h, batch_size, N):
+        super(consumption, self).__init__()
+        self.dim_h = dim_h
+        self.batch_size = batch_size
+        self.N = N
+        self.linear1 = nn.Linear(2, dim_h)
+        self.linear2 = nn.Linear(dim_h, dim_h)
+        self.linear3 = nn.Linear(dim_h, 1)
+        self.softplus = nn.Softplus(beta=1,threshold=3)
+        self.activation = nn.ReLU()
+
+
+
+    def forward(self, dW):
+        def phi(x):
+            x = self.activation(self.linear1(x))
+            x = self.activation(self.linear2(x))
+            x = self.softplus(self.linear3(x))
+            return x
+
+
+        output_seq = torch.empty((self.batch_size,
+                                  self.N,1))
+
+        input_seq = torch.empty((self.batch_size,
+                                  self.N,1))
+
+
+
+        x = torch.ones(self.batch_size,1)*x_0
+
+        int = torch.zeros(self.batch_size,1)
+
+        for i in range(N):
+            input_seq[:,i, :] = x
+            u = torch.cat((x, torch.ones_like(x) * dt * i), 1)
+            out = phi(u)
+            output_seq[:,i, :] = out
+            if i < N-1:
+                x = x + b(x,i*dt,out) * dt + sigma(x,i*dt,out)*dW[:,i+1,:]
+                if torch.sum(x<=0)>0:
+                    print(str(itr) + "x <=0")
+                int = int + torch.log(out*x)*dt
+
+
+        input_seq[:,-1,:]=x
+        return x, input_seq, output_seq, int
+
+
+
+def loss_con(terminal, int):
+    return - torch.mean(int[:,0] + K*torch.log(terminal[:,0]))
+
+
+
+def train(itr, model):
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    losses = []
+
+    for n in range(itr):
+        dW = torch.randn(model.batch_size, model.N, 1)*np.sqrt(dt)
+        xT, state_seq, control_seq, int = model(dW)
+
+        loss = loss_con(xT, int)
+        losses.append(float(loss))
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if n%100 == 0:
+            print(n)
+
+    return losses, control_seq, state_seq
+
+
+itr = 1000
+batch_size = 3000
+dim_h=32
+#itr = 2000
+#batch_size = 5000
+#dim_h = 32
+model = consumption(dim_h, batch_size, N)
+losses, control_p, state_seq_p = train(itr,model)
+
+
+opt = 1/(2-t)
+i = np.random.randint(1000)
+plt.plot(t,control_p[i,:,0].detach().numpy(), label="Predicted control")
+plt.plot(t,opt, label="True control")
+plt.plot(t,state_seq_p[i,:,0].detach().numpy(), label="State")
+plt.legend()
+plt.show()
+
+plt.plot(losses)
+plt.show()
