@@ -179,8 +179,6 @@ class consumption(nn.Module):
                     print(str(itr) + "x <=0")
                 int = int + torch.log(out*x)*dt
 
-
-        input_seq[:,-1,:]=x
         return x, input_seq, output_seq, int
 
 
